@@ -70,6 +70,8 @@ async def dispatch(
             # Log internal notes for debugging
             for key, note in notes.items():
                 print(f"[EventBus] {agent_name} note — {key}: {note}")
+    #TEMPORARY, REMOVE LATER              
+    print(f"[EventBus] merged_delta = {merged_delta}")
 
     # ── Push to frontend if anything changed ──────────────────────────────
     if merged_delta:

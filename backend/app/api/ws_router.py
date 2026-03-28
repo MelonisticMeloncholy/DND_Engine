@@ -164,26 +164,26 @@ async def game_endpoint(websocket: WebSocket) -> None:
 
                 continue  # opening scene done — wait for first player action
 
-            # # ── Step 0: Bouncer ───────────────────────────────────────────
-            # verdict = await _bouncer.process(session_context, user_msg)
+            # ── Step 0: Bouncer ───────────────────────────────────────────
+            verdict = await _bouncer.process(session_context, user_msg)
 
-            # if not verdict.allowed:
-            #     await manager.send(SocketMessage(
-            #         sender="Bouncer",
-            #         message_type="error",
-            #         content=(
-            #             "The ancient wards reject your words. "
-            #             "Speak differently, traveller."
-            #         ),
-            #         metadata={
-            #             "turn_id": turn_id,
-            #             "reason":  verdict.reason,
-            #             "layer":   verdict.layer,
-            #         },
-            #     ), websocket)
-            #     continue
+            if not verdict.allowed:
+                await manager.send(SocketMessage(
+                    sender="Bouncer",
+                    message_type="error",
+                    content=(
+                        "The ancient wards reject your words. "
+                        "Speak differently, traveller."
+                    ),
+                    metadata={
+                        "turn_id": turn_id,
+                        "reason":  verdict.reason,
+                        "layer":   verdict.layer,
+                    },
+                ), websocket)
+                continue
 
-            # print(f"[Bouncer] Passed layer={verdict.layer} turn={turn_id}")
+            print(f"[Bouncer] Passed layer={verdict.layer} turn={turn_id}")
 
             # ── Step 1+2: Intent + Rules concurrently ─────────────────────
             intent_task = asyncio.create_task(

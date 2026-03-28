@@ -382,10 +382,10 @@ function ActiveGame({ sessionData }) {
     const rolledChar = sessionData?.character || {};
     const syncedChar = gameState?.character || {};
     
-    // Only trust the backend state if it has successfully identified your character
-    const isSynced = syncedChar.name && syncedChar.name === rolledChar.name;
-    
-    const char = isSynced ? syncedChar : rolledChar;
+    const char = {
+    ...rolledChar,           // base truth from Session Zero
+    ...( syncedChar.name === rolledChar.name ? syncedChar : {} ), // backend overrides
+    };
     // --------------------------------------
 
     return (

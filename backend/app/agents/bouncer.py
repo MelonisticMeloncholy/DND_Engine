@@ -118,24 +118,39 @@ class Bouncer(BaseAgent):
 
     def _is_obvious_rp(self, text: str) -> bool:
         """
-        Fast-path: if the message contains known RPG action words and is short,
-        skip the LLM call entirely. Saves Ollama calls for the 99% case.
+        Expanded fast-path for 1b models — skip LLM for anything
+        that looks like standard RPG input. Returns True = skip Layer 2.
         """
         lower = text.lower()
-        rp_words = (
+
+        # Any message under 120 chars that doesn't contain real-world
+        # trigger words is almost certainly safe RPG content
+        real_world_triggers = (
+            "instruction", "recipe", "synthesize", "how to make",
+            "teach me", "real world", "actual steps",
+        )
+        has_trigger = any(t in lower for t in real_world_triggers)
+
+        if not has_trigger and len(text) <= 120:
+            return True  # fast-path: skip Layer 2 entirely
+
+        # Longer messages — check for RP verbs as secondary signal
+        rp_verbs = (
             "i attack", "i search", "i open", "i pick", "i cast", "i run",
             "i hide", "i talk", "i ask", "i look", "i move", "i go",
-            "i try", "i draw", "i roll", "i sneak", "i climb", "i jump",
-            "i grab", "i drink", "i eat", "i rest", "i wait", "i listen",
+            "i try", "i draw", "i sneak", "i climb", "i jump", "i grab",
+            "i drink", "i eat", "i rest", "i wait", "i listen", "i examine",
+            "i check", "i roll", "i use", "i equip", "i throw", "i dodge",
         )
-        has_rp_word = any(lower.startswith(w) or f" {w}" in lower for w in rp_words)
-        is_short    = len(text) < 200
-        has_no_hint = not any(h in lower for h in ("instruction", "real", "actual", "teach me"))
-        return has_rp_word and is_short and has_no_hint
-
-    # ── Layer 2 ───────────────────────────────────────────────────────────────
+        has_rp_verb = any(lower.startswith(w) or f" {w}" in lower for w in rp_verbs)
+        return has_rp_verb and not has_trigger
 
     async def _layer2_semantic_check(self, text: str) -> BouncerVerdict:
+        """
+        Layer 2 only runs for genuinely ambiguous content.
+        With the expanded fast-path above, this should almost never fire.
+        Always fails OPEN on any error — never block gameplay.
+        """
         try:
             response = await asyncio.to_thread(
                 ollama.chat,
@@ -147,15 +162,18 @@ class Bouncer(BaseAgent):
                 format="json",
                 options={"temperature": 0.0},
             )
-            raw    = response["message"]["content"]
-            result = json.loads(raw)
-
-            allowed = bool(result.get("allowed", True))
+            result = json.loads(response["message"]["content"])
+            allowed = bool(result.get("allowed", True))  # default True if key missing
             reason  = str(result.get("reason", ""))
+            # Extra safety net: if the model blocked something containing
+            # only known RPG words, override it and allow
+            if not allowed:
+                lower = text.lower()
+                if any(w in lower for w in _ALLOWED_CONTEXT_HINTS):
+                    print(f"[Bouncer] Layer 2 false positive overridden for: {text[:60]}")
+                    return BouncerVerdict(allowed=True, layer=2)
             return BouncerVerdict(allowed=allowed, reason=reason, layer=2)
 
         except Exception as exc:
-            # Ollama failure → fail OPEN (allow). Never block gameplay
-            # because the safety LLM crashed.
             print(f"[Bouncer] Layer 2 error, failing open: {exc}")
             return BouncerVerdict(allowed=True, reason="", layer=2)

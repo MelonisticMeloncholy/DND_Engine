@@ -83,7 +83,7 @@ class StateExtractor(BaseAgent):
             )
             raw = response["message"]["content"]
             print(f"\n--- STATE EXTRACTOR RAW OUTPUT ---")
-            print(raw_text)
+            print(raw)
             print(f"----------------------------------\n")
             delta = json.loads(raw)
 
