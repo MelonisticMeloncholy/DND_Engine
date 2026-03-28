@@ -1,0 +1,44 @@
+# --- Environment / Secrets (CRITICAL) ---
+.env
+.env.local
+.env.*.local
+*.env
+# Never push your Gemini API keys or DB credentials!
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.python-version
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+build/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Local Databases & AI ---
+# Ignore the actual vector data and local models
+chroma_db/
+*.db
+*.sqlite3
+# If you have a folder where Ollama stores weights locally
+.ollama/
+
+# --- Operating System ---
+.DS_Store
+Thumbs.db
+.metadata/
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
