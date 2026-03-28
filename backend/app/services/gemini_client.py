@@ -15,27 +15,7 @@ import time
 from collections import deque
 from typing import AsyncGenerator
 
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
-CUSTOM_SAFETY_SETTINGS = [
-    {
-        "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
-        "threshold": HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-        "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        "threshold": HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-        "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        "threshold": HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-        "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        "threshold": HarmBlockThreshold.BLOCK_NONE,
-    },
-]
+from google import genai
 
 from app.core.config import settings
 
@@ -123,55 +103,51 @@ class GeminiClient:
         history: list[str],
         turn_id: str = "",
     ) -> AsyncGenerator[str, None]:
-        """
-        Stream narrative tokens from Gemini.
+        compressed_system = _compress(system_prompt, settings.GEMINI_SYSTEM_PROMPT_TOKEN_BUDGET)
+        compressed_user   = _compress(user_prompt,   settings.GEMINI_USER_PROMPT_TOKEN_BUDGET)
 
-        Args:
-            system_prompt: DM persona + world context (will be compressed).
-            user_prompt:   Player action + injected rules (will be compressed).
-            history:       Recent narrative turns (already windowed by caller).
-            turn_id:       For log correlation.
-
-        Yields:
-            Individual text tokens as they arrive.
-        """
-        # Compress both prompts to stay within budget
-        compressed_system = _compress(
-            system_prompt,
-            budget_tokens=settings.GEMINI_SYSTEM_PROMPT_TOKEN_BUDGET,
-        )
-        compressed_user = _compress(
-            user_prompt,
-            budget_tokens=settings.GEMINI_USER_PROMPT_TOKEN_BUDGET,
-        )
-
-        # Acquire a key that has remaining quota
         api_key, key_idx = await self._rotator.acquire()
         print(f"[GeminiClient] turn={turn_id} using key[{key_idx}] (last 4: ...{api_key[-4:]})")
 
-        # Configure the SDK for this specific call
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name=self._model_name,
-            system_instruction=compressed_system,
-            generation_config=genai.types.GenerationConfig(
-                max_output_tokens=self._max_tokens,
-                temperature=self._temperature,
-            ),
-        )
+        client = genai.Client(api_key=api_key)
 
-        # Build minimal chat history — only the windowed beats
-        chat_history = [
-            {"role": "user", "parts": [beat]}
-            for beat in history
-        ]
+        contents = list(history) + [compressed_user]
 
         try:
-            chat = model.start_chat(history=chat_history)
-            response = await chat.send_message_async(compressed_user, stream=True)
-            async for chunk in response:
-                if chunk.text:
-                    yield chunk.text
+            async for chunk in client.aio.models.generate_content_stream(
+                model=self._model_name,
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=compressed_system,
+                    max_output_tokens=self._max_tokens,
+                    temperature=self._temperature,
+                    safety_settings=[
+                        genai.types.SafetySetting(
+                            category="HARM_CATEGORY_HARASSMENT",
+                            threshold="BLOCK_NONE",
+                        ),
+                        genai.types.SafetySetting(
+                            category="HARM_CATEGORY_HATE_SPEECH",
+                            threshold="BLOCK_NONE",
+                        ),
+                        genai.types.SafetySetting(
+                            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            threshold="BLOCK_NONE",
+                        ),
+                        genai.types.SafetySetting(
+                            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                            threshold="BLOCK_NONE",
+                        ),
+                    ],
+                ),
+            ):
+                try:
+                    if chunk.candidates and chunk.candidates[0].content.parts:
+                        text = chunk.candidates[0].content.parts[0].text
+                        if text:
+                            yield text
+                except (AttributeError, IndexError):
+                    continue
         except Exception as exc:
             print(f"[GeminiClient] Stream error on key[{key_idx}]: {exc}")
             raise

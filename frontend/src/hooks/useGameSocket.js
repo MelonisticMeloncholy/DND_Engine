@@ -91,6 +91,10 @@ export const useGameSocket = (url) => {
                         ...prev.character,
                         ...metadata.delta,
                     },
+                    // Combat state lives at top level, not inside character
+                    ...(metadata.delta.combat !== undefined && {
+                        combat: metadata.delta.combat,
+                    }),
                 }));
                 return;
             }

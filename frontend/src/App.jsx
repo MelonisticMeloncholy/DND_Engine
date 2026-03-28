@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameSocket } from './hooks/useGameSocket';
 import { Send, ScrollText, X, Sword, Heart, Coins, Package, Skull } from 'lucide-react';
 import SessionZero from './components/SessionZero';
+import CombatPanel from './components/CombatPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -432,6 +433,9 @@ function ActiveGame({ sessionData }) {
             </main>
 
             <footer className="px-4 pb-4 pt-2 border-t border-zinc-800 space-y-2 shrink-0">
+                
+                {/* Combat panel — slides in above HUD when combat is active */}
+                <CombatPanel combat={gameState?.combat} />
                 <HudStrip
                     character={char}
                     onOpenDrawer={() => setDrawerOpen(true)}

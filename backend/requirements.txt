@@ -13,11 +13,13 @@ numpy<2.0.0
 # IMPORTANT: Use google-generativeai (the stable SDK), NOT google-genai.
 # dm_agent.py was using google.genai (the new experimental SDK) which has
 # different import paths and broke streaming. This is the correct package.
-google-generativeai==0.7.2
-
 # ── Local LLM — Ollama ────────────────────────────────────────────────────────
-ollama==0.2.1
 
 # ── Async Utilities ───────────────────────────────────────────────────────────
 anyio==4.4.0
-httpx==0.27.0
+
+sentence-transformers
+
+google-genai==1.69.0
+ollama==0.4.4
+httpx==0.28.1
