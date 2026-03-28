@@ -15,7 +15,7 @@ After stream_end (fire-and-forget):
 
 import asyncio
 import uuid
-
+import app.core.env_patch
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.agents.bouncer import Bouncer

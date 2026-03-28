@@ -379,13 +379,7 @@ function ActiveGame({ sessionData }) {
     // We force the UI to use your rolled SessionZero data until the backend 
     // StateExtractor successfully syncs and returns your actual character name.
     
-    const rolledChar = sessionData?.character || {};
-    const syncedChar = gameState?.character || {};
-    
-    const char = {
-    ...rolledChar,           // base truth from Session Zero
-    ...( syncedChar.name === rolledChar.name ? syncedChar : {} ), // backend overrides
-    };
+    const char = gameState?.character || sessionData?.character || {};
     // --------------------------------------
 
     return (

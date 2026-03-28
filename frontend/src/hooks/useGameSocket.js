@@ -143,21 +143,41 @@ export const useGameSocket = (url) => {
     }, [isConnected]);
 
     const initSession = useCallback((sessionData) => {
-        if (!socketRef.current || !isConnected) return;
+        if (!socketRef.current) return;
 
-        // Send a special system message that ws_router uses to
-        // seed session_context with the full character + world
-        const payload = {
-            sender:       'System',
-            message_type: 'session_init',
-            content:      'Session initialised.',
-            metadata:     {
-            character: sessionData.character,
-            world:     sessionData.world,
-            },
+        // Seed gameState immediately with Session Zero data
+        // so the name is present before any state_update arrives
+        if (sessionData?.character) {
+            setGameState(prev => ({
+                ...prev,
+                character: {
+                    ...prev.character,
+                    ...sessionData.character,
+                },
+            }));
+        }
+
+        // Wait for connection before sending the init message
+        const sendInit = () => {
+            const payload = {
+                sender:       'System',
+                message_type: 'session_init',
+                content:      'Session initialised.',
+                metadata: {
+                    character: sessionData.character,
+                    world:     sessionData.world,
+                },
+            };
+            socketRef.current.send(JSON.stringify(payload));
         };
-        socketRef.current.send(JSON.stringify(payload));
-    }, [isConnected]);
+
+        // Socket may not be open yet if this fires right after mount
+        if (socketRef.current.readyState === WebSocket.OPEN) {
+            sendInit();
+        } else {
+            socketRef.current.addEventListener('open', sendInit, { once: true });
+        }
+    }, []);
 
     // Single return at the bottom — includes gameState
     return { messages, isConnected, isStreaming, sendMessage, gameState, initSession };

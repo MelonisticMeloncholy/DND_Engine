@@ -1,8 +1,4 @@
-import os
-os.environ["ANONYMIZED_TELEMETRY"] = "False"
-os.environ["CHROMA_TELEMETRY"]     = "False"
-os.environ["POSTHOG_DISABLED"] = "True"
-
+import app.core.env_patch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.ws_router import router as websocket_router
