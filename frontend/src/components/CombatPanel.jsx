@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sword, Shield, Zap, Wind, ChevronRight } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -144,12 +144,19 @@ export default function CombatPanel({ combat }) {
         <div className="border border-amber-900/60 bg-zinc-950 rounded-xl overflow-hidden mb-2 animate-in slide-in-from-bottom duration-300">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 bg-amber-900/20 border-b border-amber-900/40">
+            <div className="flex items-center justify-between px-3 py-2 bg-amber-900/20 border-b border-amber-900/40"onClick={() => setExpanded(e => !e)}>
                 <div className="flex items-center gap-2">
                     <Sword size={13} className="text-amber-400" />
                     <span className="text-xs font-bold text-amber-300">
                         Combat — Round {combat.round}
                     </span>
+                    {!expanded && (
+                        <span className="text-xs text-zinc-500 ml-2">
+                            {combat.combatants?.map(c =>
+                                `${c.name} ${c.hp_current}/${c.hp_max}`
+                            ).join(' · ')}
+                        </span>
+                    )}
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded border ${
                     isPlayerTurn
@@ -158,7 +165,9 @@ export default function CombatPanel({ combat }) {
                 }`}>
                     {isPlayerTurn ? 'Your turn' : `${combat.current_turn?.name}'s turn`}
                 </span>
+                <span className="text-zinc-600 text-xs">{expanded ? '▲' : '▼'}</span>
             </div>
+            {expanded && (
 
             <div className="p-3 space-y-3">
 
@@ -188,6 +197,7 @@ export default function CombatPanel({ combat }) {
                 )}
 
             </div>
+            )}
         </div>
     );
 }

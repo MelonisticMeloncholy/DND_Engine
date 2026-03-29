@@ -114,7 +114,7 @@ class GeminiClient:
         contents = list(history) + [compressed_user]
 
         try:
-            async for chunk in client.aio.models.generate_content_stream(
+            response = await client.aio.models.generate_content_stream(
                 model=self._model_name,
                 contents=contents,
                 config=genai.types.GenerateContentConfig(
@@ -140,12 +140,11 @@ class GeminiClient:
                         ),
                     ],
                 ),
-            ):
+            )
+            async for chunk in response:
                 try:
-                    if chunk.candidates and chunk.candidates[0].content.parts:
-                        text = chunk.candidates[0].content.parts[0].text
-                        if text:
-                            yield text
+                    if chunk.text:
+                        yield chunk.text
                 except (AttributeError, IndexError):
                     continue
         except Exception as exc:
