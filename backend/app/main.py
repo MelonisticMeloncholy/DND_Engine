@@ -4,14 +4,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.ws_router import router as websocket_router
-from app.services import sqlite_service
+from app.db import sqlite_session
 from pydantic import BaseModel
 from typing import Any
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await sqlite_service.init_db()
+    await sqlite_session.init_db()
     print("[DB] SQLite initialised.")
     yield
 
@@ -41,20 +41,20 @@ class SessionCreateRequest(BaseModel):
 async def create_session(req: SessionCreateRequest):
     import uuid
     session_id = str(uuid.uuid4())
-    await sqlite_service.create_session(session_id, req.character, req.world)
+    await sqlite_session.create_session(session_id, req.character, req.world)
     return {"session_id": session_id, "status": "ready"}
 
 
 @app.get("/api/sessions")
 async def get_sessions():
     """Save slot list for the start menu."""
-    sessions = await sqlite_service.list_sessions()
+    sessions = await sqlite_session.list_sessions()
     return {"sessions": sessions}
 
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str):
-    await sqlite_service.delete_session(session_id)
+    await sqlite_session.delete_session(session_id)
     return {"status": "deleted"}
 
 

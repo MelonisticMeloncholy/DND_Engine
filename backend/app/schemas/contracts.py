@@ -53,6 +53,8 @@ class SocketMessage(BaseModel):
         "dice_roll_request",
         "session_init",
         "error",
+        "session_load",
+        "session_ready"
     ]
     content: str = Field(..., description="Text payload or signal keyword")
     metadata: Optional[Dict] = Field(default=None)

@@ -26,10 +26,7 @@ from app.core.event_bus import dispatch as bus_dispatch
 from app.schemas.contracts import SocketMessage
 
 import asyncio
-from app.db import sqlite_sessions
-asyncio.create_task(
-    sqlite_session.create_session(session_id, char, world)
-)
+from app.db import sqlite_session
 
 router = APIRouter()
 
@@ -115,8 +112,11 @@ async def game_endpoint(websocket: WebSocket) -> None:
                     f"{char.get('race','?')} {char.get('char_class','?')}"
                 )
                 session_id = str(uuid.uuid4())
-                context["session_id"]  = session_id
-                context["turn_count"]  = 0
+                session_context["session_id"]  = session_id
+                session_context["turn_count"]  = 0
+                asyncio.create_task(
+                    sqlite_session.create_session(session_id, char, world)
+                )
 
                 # Build the opening scene prompt from backstory + world bible
                 anchors     = world.get("backstory_anchors", [])

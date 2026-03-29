@@ -3,6 +3,7 @@ import { useGameSocket } from './hooks/useGameSocket';
 import { Send, ScrollText, X, Sword, Heart, Coins, Package, Skull } from 'lucide-react';
 import SessionZero from './components/SessionZero';
 import CombatPanel from './components/CombatPanel';
+import SaveSlots from './components/SaveSlots';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -341,7 +342,7 @@ function HudStrip({ character, onOpenDrawer }) {
 
 // ── The Active Game Component (Only loads AFTER character creation) ──────────
 
-function ActiveGame({ sessionData }) {
+function ActiveGame({ sessionData, loadSessionId }) {
     const {
         messages,
         isConnected,

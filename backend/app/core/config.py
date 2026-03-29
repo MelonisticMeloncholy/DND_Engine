@@ -26,6 +26,8 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+    # ── Database ──────────────────────────────────────────────────────────────────
+    SQLITE_DB_PATH: str = "./data/chronicles.sqlite3"
     # ── ChromaDB ──────────────────────────────────────────────────────────────────
     # Native path for development. Docker volume mount path for production.
     CHROMA_PERSIST_PATH: str = "./data/chromadb"
@@ -95,3 +97,4 @@ def get_settings() -> Settings:
 
 # Convenience singleton — import this everywhere
 settings = get_settings()
+
