@@ -349,7 +349,16 @@ function ActiveGame({ sessionData }) {
         sendMessage,
         gameState,
         initSession,
+        loadSession,
     } = useGameSocket('ws://localhost:8000/ws/game');
+
+    useEffect(() => {
+        if (loadSessionId) {
+            loadSession(loadSessionId);  // returning player
+        } else if (sessionData) {
+            initSession(sessionData);    // new character
+        }
+    }, [sessionData, loadSessionId]);
 
     const [input, setInput]           = useState('');
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -477,28 +486,46 @@ function ActiveGame({ sessionData }) {
 // ── Root App Router ───────────────────────────────────────────────────────────
 
 export default function App() {
+    // screen: 'slots' | 'session_zero' | 'game'
+    const [screen, setScreen]         = useState('slots');
     const [sessionData, setSessionData] = useState(null);
+    const [loadSessionId, setLoadSessionId] = useState(null);
 
-    // Intercept the data from SessionZero to translate camelCase to snake_case
-    const handleSessionComplete = (data) => {
-        if (data && data.character) {
-            const c = data.character;
-            // Force the specific keys the UI and Python Backend expect
-            c.hp_max = c.maxHp || c.hp_max || 10;
-            c.hp_current = c.hp_max; // Start at full health
-            c.armor_class = c.armorClass || c.armor_class || 10;
-            c.gold_pieces = c.startingGp ?? c.gold_pieces ?? 0;
-            c.char_class = c.charClass || c.char_class || "";
-        }
-        setSessionData(data);
+    const handleNewGame = () => setScreen('session_zero');
+
+    const handleLoadGame = (sessionId) => {
+        setLoadSessionId(sessionId);
+        setScreen('game');
     };
 
-    // If no character data exists, show the character creator.
-    // The WebSocket will NOT connect until this is finished.
-    if (!sessionData) {
+    const handleSessionComplete = (data) => {
+        const c = data.character;
+        c.hp_max      = c.maxHp      || c.hp_max      || 10;
+        c.hp_current  = c.hp_max;
+        c.armor_class = c.armorClass  || c.armor_class || 10;
+        c.gold_pieces = c.startingGp  ?? c.gold_pieces ?? 0;
+        c.char_class  = c.charClass   || c.char_class  || "";
+        setSessionData(data);
+        setScreen('game');
+    };
+
+    if (screen === 'slots') {
+        return (
+            <SaveSlots
+                onNewGame={handleNewGame}
+                onLoadGame={handleLoadGame}
+            />
+        );
+    }
+
+    if (screen === 'session_zero') {
         return <SessionZero onComplete={handleSessionComplete} />;
     }
 
-    // Once the character is created, mount the actual game and connect the socket.
-    return <ActiveGame sessionData={sessionData} />;
+    return (
+        <ActiveGame
+            sessionData={sessionData}
+            loadSessionId={loadSessionId}
+        />
+    );
 }

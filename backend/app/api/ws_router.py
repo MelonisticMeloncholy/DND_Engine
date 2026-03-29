@@ -25,6 +25,12 @@ from app.agents.rules_lawyer import RulesLawyer
 from app.core.event_bus import dispatch as bus_dispatch
 from app.schemas.contracts import SocketMessage
 
+import asyncio
+from app.db import sqlite_sessions
+asyncio.create_task(
+    sqlite_session.create_session(session_id, char, world)
+)
+
 router = APIRouter()
 
 _bouncer       = Bouncer()
@@ -108,6 +114,9 @@ async def game_endpoint(websocket: WebSocket) -> None:
                     f"{char.get('name','?')} the "
                     f"{char.get('race','?')} {char.get('char_class','?')}"
                 )
+                session_id = str(uuid.uuid4())
+                context["session_id"]  = session_id
+                context["turn_count"]  = 0
 
                 # Build the opening scene prompt from backstory + world bible
                 anchors     = world.get("backstory_anchors", [])
@@ -163,6 +172,41 @@ async def game_endpoint(websocket: WebSocket) -> None:
                     ), websocket)
 
                 continue  # opening scene done — wait for first player action
+
+            # ── Session load (returning player) ──────────────────────────────────
+            if user_msg.message_type == "session_load":
+                session_id = user_msg.metadata.get("session_id", "")
+                if not session_id:
+                    await manager.send(SocketMessage(
+                        sender="System",
+                        message_type="error",
+                        content="No session ID provided.",
+                    ), websocket)
+                    continue
+
+                snapshot = await sqlite_session.load_snapshot(session_id)
+                if not snapshot:
+                    await manager.send(SocketMessage(
+                        sender="System",
+                        message_type="error",
+                        content="Save file not found.",
+                    ), websocket)
+                    continue
+
+                session_context.update(snapshot)
+                session_context["session_id"] = session_id
+
+                await manager.send(SocketMessage(
+                    sender="System",
+                    message_type="session_ready",
+                    content="Campaign loaded.",
+                    metadata={
+                        "character": snapshot["character"],
+                        "world":     snapshot["world"],
+                        "session_id": session_id,
+                    },
+                ), websocket)
+                continue
 
             # ── Step 0: Bouncer ───────────────────────────────────────────
             verdict = await _bouncer.process(session_context, user_msg)
@@ -231,6 +275,7 @@ async def game_endpoint(websocket: WebSocket) -> None:
                                     dm_full_text=full_text,
                                     context=session_context,
                                     send_fn=send_to_client,
+                                    player_input=user_msg.content,
                                 )
                             )
 

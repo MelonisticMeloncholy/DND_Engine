@@ -37,6 +37,7 @@ CRITICAL RULES:
 - For enemies, estimate HP from CR if not stated (goblin=7, bandit=11, orc=15, troll=84).
 - Return ONLY valid JSON. No markdown. No explanation.
 - A single narrative can have BOTH hp_change AND combat_started = true at the same time. Extract all applicable fields independently.
+- If enemies are listed and the narrative describes active fighting, attacking, or lunging, set combat_started = true immediately. Do not wait for explicit 'roll initiative' language.
 
 === EXAMPLES ===
 

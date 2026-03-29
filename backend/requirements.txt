@@ -23,3 +23,5 @@ sentence-transformers
 google-genai==1.69.0
 ollama==0.4.4
 httpx==0.28.1
+
+aiosqlite==0.20.0

@@ -1,13 +1,25 @@
-import app.core.env_patch
+import app.core.env_patch  # noqa: F401 — must be first
+
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.ws_router import router as websocket_router
+from app.services import sqlite_service
 from pydantic import BaseModel
 from typing import Any
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await sqlite_service.init_db()
+    print("[DB] SQLite initialised.")
+    yield
+
 
 app = FastAPI(
     title="Chronicles of the Forgotten Realm Engine",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -25,24 +37,25 @@ class SessionCreateRequest(BaseModel):
     world:     dict[str, Any]
 
 
-# In-memory session store (replaced by SQLite in a later step)
-_pending_sessions: dict[str, dict] = {}
-
-
 @app.post("/api/session/create")
 async def create_session(req: SessionCreateRequest):
-    """
-    Called by SessionZero on Begin.
-    Stores character + world so ws_router can seed session_context
-    on the next WebSocket connection.
-    """
     import uuid
     session_id = str(uuid.uuid4())
-    _pending_sessions[session_id] = {
-        "character": req.character,
-        "world":     req.world,
-    }
+    await sqlite_service.create_session(session_id, req.character, req.world)
     return {"session_id": session_id, "status": "ready"}
+
+
+@app.get("/api/sessions")
+async def get_sessions():
+    """Save slot list for the start menu."""
+    sessions = await sqlite_service.list_sessions()
+    return {"sessions": sessions}
+
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str):
+    await sqlite_service.delete_session(session_id)
+    return {"status": "deleted"}
 
 
 @app.get("/health")

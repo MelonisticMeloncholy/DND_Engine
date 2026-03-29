@@ -4,20 +4,29 @@ export const useGameSocket = (url) => {
     const [messages, setMessages] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
-    const [gameState, setGameState] = useState({
-        character: {
-            name: 'Adventurer',
-            level: 1,
-            hp_current: 10,
-            hp_max: 10,
-            armor_class: 10,
-            gold_pieces: 0,
-            inventory: [],
-            status_effects: [],
-            hunger_level: 'Sated',
-            morality_score: 50,
-        },
-        world: {},
+    const [gameState, setGameState] = useState(() => {
+        const defaultState = {
+            character: {
+                name: 'Adventurer', level: 1,
+                hp_current: 10, hp_max: 10,
+                armor_class: 10, gold_pieces: 0,
+                inventory: [], status_effects: [],
+                hunger_level: 'Sated', morality_score: 50,
+            },
+            world: {},
+            combat: null,
+        };
+        try {
+            const saved = sessionStorage.getItem('chronicles_gamestate');
+            if (!saved) return defaultState;
+            const parsed = JSON.parse(saved);
+            // Validate it has the required shape before trusting it
+            if (!parsed?.character?.name) return defaultState;
+            return parsed;
+        } catch {
+            sessionStorage.clear(); // nuke corrupted state
+            return defaultState;
+        }
     });
 
     const socketRef = useRef(null);
@@ -80,6 +89,20 @@ export const useGameSocket = (url) => {
                 setMessages(prev => prev.map(m =>
                     m.id === turnId ? { ...m, streaming: false } : m
                 ));
+                return;
+            }
+            if (message_type === 'session_ready' && metadata) {
+                if (metadata.character) {
+                    setGameState(prev => {
+                        const next = {
+                            ...prev,
+                            character: { ...prev.character, ...metadata.character },
+                            world:     metadata.world ?? prev.world,
+                        };
+                        try { sessionStorage.setItem('chronicles_gamestate', JSON.stringify(next)); } catch {}
+                        return next;
+                    });
+                }
                 return;
             }
 
@@ -180,6 +203,23 @@ export const useGameSocket = (url) => {
             sendInit();
         } else {
             socketRef.current.addEventListener('open', sendInit, { once: true });
+        }
+    }, []);
+    const loadSession = useCallback((sessionId) => {
+        const send = () => {
+            const payload = {
+                sender:       'System',
+                message_type: 'session_load',
+                content:      'Loading saved session.',
+                metadata:     { session_id: sessionId },
+            };
+            socketRef.current.send(JSON.stringify(payload));
+        };
+
+        if (socketRef.current?.readyState === WebSocket.OPEN) {
+            send();
+        } else {
+            socketRef.current?.addEventListener('open', send, { once: true });
         }
     }, []);
 

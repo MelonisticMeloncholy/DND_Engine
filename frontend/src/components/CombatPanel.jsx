@@ -135,6 +135,7 @@ function ActionEconomy({ combat }) {
 // ── Root CombatPanel ──────────────────────────────────────────────────────────
 
 export default function CombatPanel({ combat }) {
+    const [expanded, setExpanded] = useState(true);
     if (!combat?.active) return null;
 
     const isPlayerTurn = combat.current_turn?.is_player;
