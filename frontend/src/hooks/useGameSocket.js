@@ -224,6 +224,6 @@ export const useGameSocket = (url) => {
     }, []);
 
     // Single return at the bottom — includes gameState
-    return { messages, isConnected, isStreaming, sendMessage, gameState, initSession };
+    return { messages, isConnected, isStreaming, sendMessage, gameState, initSession, loadSession };
 
 };
